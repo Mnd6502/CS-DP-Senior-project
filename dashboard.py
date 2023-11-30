@@ -1,5 +1,5 @@
 import dash
-
+from PIL import Image
 from dash import dcc, html, Input, Output
 import pandas as pd
 from plotly.subplots import make_subplots
@@ -19,6 +19,16 @@ Seasonality = HurrSeasonality(hurricane_data)
 Category = HurrCategory(hurricane_data)
 YearTrend = YearTrend(hurricane_data)
 location_options = [1,2,10,11,17,25,28]
+
+pil_img = Image.open("Image/Model 1/Figure_1.png")
+pil_img2 = Image.open("Image/Model 1/Figure_2.png")
+pil_img3 = Image.open("Image/Model 1/Figure_3.png")
+pil_img4 = Image.open("Image/Model 1/Figure_4.png")
+
+pil_md2_a = Image.open("Image/output.png")
+pil_md2_f1 = Image.open("Image/Tune_output.png")
+pil_NN = Image.open("Image/nn_output.png")
+pil_NN_cfm = Image.open("Image/NN_cfm_output.png")
 
 app = dash.Dash(__name__)
 
@@ -64,6 +74,7 @@ app.layout = html.Div([
     # Graph to display the wind and pressure subplots
     html.Div(id='output-container'),
     
+    html.Hr(), 
 
     html.Div([html.H1("Exposure Report")],style={'textAlign': 'center', 'margin': 'auto'},),
     html.Div([
@@ -97,7 +108,51 @@ app.layout = html.Div([
         'margin-left': 'auto',
         'margin-right': 'auto', 
         'width': '60%'
-    })
+    }), 
+    html.Hr(),
+    html.Div([html.H1("Hurricane & Exposure Analysis Model")],style={'textAlign': 'center', 'margin': 'auto'},),
+    html.Div([html.H2("Model 1: Exposure Insured Value Prediction")]),
+    html.Div([
+        html.Div([
+            html.Div([
+                html.Img(src=pil_img, style={'display':'inline-block', 'float':'left','width': '50%', 'height': '50%', 'object-fit': 'cover'})
+            ]),
+            html.Div([
+                html.Img(src=pil_img2, style={'display':'inline-block', 'float':'right','width': '50%', 'height': '50%', 'object-fit': 'cover'})
+            ]),
+        ]),
+        html.Div([
+            html.Div([
+                html.Img(src=pil_img3, style={'display':'inline-block', 'float':'left','width': '50%','height': '50%', 'object-fit': 'cover'})
+            ]),
+            html.Div([
+                html.Img(src=pil_img4, style={'display':'inline-block', 'float':'right','width': '50%','height': '50%', 'object-fit': 'cover'})
+            ]),
+        ])
+    ]),
+    html.Hr(), 
+    html.Div([html.H2("Model 2: Hurricane Classifier")]),
+    html.Div([
+        html.Div([
+            html.Img(src=pil_md2_a, style={'display':'inline-block', 'float':'left','width': '50%', 'height': '50%'})
+        ]),
+        html.Div([
+            html.Img(src=pil_md2_f1, style={'display':'inline-block', 'float':'right','width': '50%', 'height': '50%'})
+        ]),
+    ]),
+    html.Hr(),
+    html.Div([
+        html.H3("NN Training & Testing accuracy "),
+            html.Img(src=pil_NN, style={'display':'inline-block','width': '50%', 'height': '50%', 'object-fit': 'cover'})
+        ], style={'textAlign': 'center', 'margin': 'auto'}),     
+    html.Div([
+            html.H3("NN Confusion Matrix "),
+            html.Img(src=pil_NN_cfm, style={'display':'inline-block','width': '30%', 'height': '30%', 'object-fit': 'cover'})
+        ], style={'textAlign': 'center', 'margin': 'auto'}),
+    html.Hr(), 
+    
+    html.Div([html.H2("Model 3: Hurricane Path Prediction (On Going/Future)")])
+    
 ])
 
 @app.callback(
