@@ -35,7 +35,7 @@ def get_region(row,region_mapping):
     
     
 def location_refine(df):
-
+    region_mapping = pd.read_csv('./data/Region Mapping.csv')
     location_dict = {}
     location_counter = 1
 
@@ -50,7 +50,7 @@ def location_refine(df):
         
     location_list = [[location, lat, long] for (lat, long), location in location_dict.items()]
     location_df = pd.DataFrame(location_list, columns=['Location', 'Latitude', 'Longitude'])
-    
+    location_df['Region'] = location_df.apply(get_region, args=(region_mapping,), axis=1)
     location_df.to_csv('Location_lookup.csv', index=False)
 
 def check_at_risk(row,hurricane_data):

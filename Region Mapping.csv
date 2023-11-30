@@ -1,5 +1,0 @@
-Region,Latitude Boundary Southern End,Latitude Boundary Northern End,Longitude Boundary Eastern End,Longitude Boundary Western End
-South,0,35,0,-110
-Northeast,35,90,-60,-80
-Midwest,35,90,-80,-110
-West,0,60,-110,-130

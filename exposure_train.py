@@ -11,6 +11,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 
+### Simple Model
 
 exposures_data = pd.read_csv('New_exposures.csv')
 
@@ -36,6 +37,9 @@ print("=" * 40)
 plt.scatter(y_test, predictions, alpha=0.3)
 plt.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'k--', lw=4)
 plt.show()
+
+###################################
+
 
 
 X = exposures_data.drop(['Location','Total Insured Value','At Risk?','Region', 'Num6-hourEncounters','Max_wind'], axis=1)
@@ -114,8 +118,6 @@ for name, pipeline in pipelines.items():
     print(f"RMSE: {rmse}")
     print(f"R2: {r2}")
     print("=" * 40)
-
-
 
 
 # Hyperparameter grids

@@ -1,4 +1,5 @@
 import dash
+
 from dash import dcc, html, Input, Output
 import pandas as pd
 from plotly.subplots import make_subplots
@@ -8,7 +9,8 @@ from visualization import *
 
 # Load your data
 hurricane_data = pd.read_csv('selected_hurricane_data.csv')
-exposure_data = pd.read_csv('New_exposures.csv')
+exposure_data = pd.read_csv('New_Exposures.csv')
+location_lookup_df = pd.read_csv('./data/Location_lookup.csv')
 
 # Unique hurricane names for the first dropdown
 unique_years = sorted(hurricane_data['Season (Year)'].unique())
@@ -16,6 +18,7 @@ years_options = [{'label': year, 'value': year} for year in unique_years]
 Seasonality = HurrSeasonality(hurricane_data)
 Category = HurrCategory(hurricane_data)
 YearTrend = YearTrend(hurricane_data)
+location_options = [1,2,10,11,17,25,28]
 
 app = dash.Dash(__name__)
 
@@ -61,14 +64,40 @@ app.layout = html.Div([
     # Graph to display the wind and pressure subplots
     html.Div(id='output-container'),
     
-    # html.Iframe(
-    #     id='map',
-    #     src=app.get_asset_url('Exposures_map.html'),  
-    #     style={"height": "600px", "width": "100%"}
-    # ),
-    
-    
 
+    html.Div([html.H1("Exposure Report")],style={'textAlign': 'center', 'margin': 'auto'},),
+    html.Div([
+        
+        html.Div([
+            html.H3("Pick a Location"),
+            dcc.Dropdown(
+                id='location-dropdown',
+                options=[{'label': i, 'value': i} for i in exposure_data['Location'].unique()],
+                value=exposure_data['Location'].unique()[0]
+            ),]),
+        html.Div([
+            html.H3("Select the year"),
+            dcc.Input(
+                id='year-input',
+                type='number',
+                value=exposure_data['PolicyYear'].max(),  # Default to the most recent year
+                style={'height':'30px','width': '100px'}
+        ),])
+    ], style={'padding': '10px', 'display': 'flex', 'justifyContent': 'space-between'}),
+    
+    html.Div(id='risk-metrics-display'),  # Placeholder for risk metrics
+
+    html.Div([
+        dcc.Graph(id='historical-premiums-chart', style={'margin-right': '10px'}), 
+        dcc.Graph(id='historical-losses-chart', style={'margin-left': '10px'}), 
+    ], style={'display': 'flex', 'justifyContent': 'center'}), 
+    
+    html.Div(dcc.Graph(id='historical-insured-value-chart'), style={
+        'display': 'block', 
+        'margin-left': 'auto',
+        'margin-right': 'auto', 
+        'width': '60%'
+    })
 ])
 
 @app.callback(
@@ -123,11 +152,20 @@ def update_output(selected_name, selected_year):
     fig.update_yaxes(title_text="Wind (kt)", secondary_y=False)
     fig.update_yaxes(title_text="Pressure (mb)", secondary_y=True)
     
+    Loc_df = location_lookup_df[location_lookup_df['Location'].isin([1,2,10,11,17,25,28])]
 
     fig2 = px.scatter_mapbox(filtered_data, lat='Latitude (deg_north)', lon='Longitude (deg_east)', size='Wind(WMO) (kt)',
                   color_continuous_scale=px.colors.cyclical.IceFire, size_max=20,zoom=3, mapbox_style="open-street-map")
-    # fig2 = px.scatter_geo(filtered_data, lat='Latitude (deg_north)', lon='Longitude (deg_east)', size='Wind(WMO) (kt)',
-    #               color_continuous_scale=px.colors.cyclical.IceFire, size_max=20)
+    fig2.add_trace(go.Scattermapbox(
+        name = 'Location',
+        mode = "markers",
+        lat = Loc_df['Latitude'],
+        lon = Loc_df['Longitude'],
+        marker = {'color': "red", 
+                "size": 10},
+        text= Loc_df['Location'],
+        hoverinfo='text'
+        ))
 
 
     # Display the summary string for the selected name and the graph
@@ -146,6 +184,81 @@ def update_output(selected_name, selected_year):
             ], style={'display': 'inline-block', 'width': '50%'}),
         ],style={'textAlign': 'center', 'margin': 'auto'},),    
     ])
+    
+@app.callback(
+    [Output('risk-metrics-display', 'children'),
+     Output('historical-premiums-chart', 'figure'),
+     Output('historical-losses-chart', 'figure'),
+     Output('historical-insured-value-chart', 'figure')],
+    [Input('location-dropdown', 'value'),
+     Input('year-input', 'value')]
+)
+
+
+def update_dashboard(selected_location, selected_year):
+    # Filter exposure data for the selected location and the last 5 years
+    
+    filtered_data = exposure_data[
+        (exposure_data['Location'] == selected_location) &
+        (exposure_data['PolicyYear'] > selected_year - 5) &
+        (exposure_data['PolicyYear'] <= selected_year)
+    ]
+    
+    # Aggregate data for locations with multiple entries per year if necessary
+    aggregated_data = filtered_data.groupby('PolicyYear').agg({
+        'Premium': 'sum',
+        'Losses - Non Catastrophe': 'sum',
+        'Total Insured Value': 'sum'
+    }).reset_index()
+    
+    at_risk = 'Yes' if exposure_data[exposure_data['Location'] == selected_location]['At Risk?'].eq('At Risk').any() else 'No'
+    hurricane_encounters = exposure_data[(exposure_data['NumStormsEncounter'] > 0) & (exposure_data['Location'] == selected_location)
+                                         & (exposure_data['PolicyYear'] <= selected_year)] ['PolicyYear'].nunique()
+    Num_hurricane = exposure_data[(exposure_data['Location'] == selected_location) & (exposure_data['PolicyYear'] <= selected_year)]['NumStormsEncounter'].sum()
+
+    location_info = location_lookup_df[location_lookup_df['Location'] == selected_location].iloc[0]
+    region = location_info['Region']
+    latitude = location_info['Latitude']
+    longitude = location_info['Longitude']
+    
+    
+    max_insured_value = aggregated_data['Total Insured Value'].max()
+    fixed_y_axis_range = (0, max_insured_value * 4/3)
+
+    # Create charts using Plotly
+    premiums_chart = px.bar(aggregated_data, x='PolicyYear', y='Premium', title='Historical Premiums',color_discrete_sequence=['red'])
+    losses_chart = px.bar(aggregated_data, x='PolicyYear', y='Losses - Non Catastrophe', title='Historical Losses',color_discrete_sequence=['red'])
+    insured_value_chart = px.bar(aggregated_data, x='PolicyYear', y='Total Insured Value', 
+                                title='Historical Insured Value',
+                                color_discrete_sequence=['red'],
+                                range_y=fixed_y_axis_range)
+    
+
+    risk_metrics_display = html.Div([
+        html.Div([
+            html.Table([
+                html.Thead(html.Tr([html.Th("Location Information", style={'border': '1px solid black', 'textAlign': 'center', 'margin': 'auto'})])),
+                html.Tbody([
+                    html.Tr([html.Td("Region:", style={'border': '1px solid black'}), html.Td(region, style={'border': '1px solid black'})]),
+                    html.Tr([html.Td("Latitude:", style={'border': '1px solid black'}), html.Td(latitude, style={'border': '1px solid black'})]),
+                    html.Tr([html.Td("Longitude:", style={'border': '1px solid black'}), html.Td(longitude, style={'border': '1px solid black'})])
+                ])
+            ], style={'border-collapse': 'collapse'})
+        ], style={'margin-right': '10px'}),
+
+        html.Div([
+            html.Table([
+                html.Thead(html.Tr([html.Th("Risk Information", style={'border': '1px solid black','textAlign': 'center', 'margin': 'auto'})])),
+                html.Tbody([
+                    html.Tr([html.Td("At Risk for Hurricane Damage:", style={'border': '1px solid black'}), html.Td(at_risk, style={'border': '1px solid black'})]),
+                    html.Tr([html.Td("Number of Years with Hurricane Encounters Since 1980:", style={'border': '1px solid black'}), html.Td(hurricane_encounters, style={'border': '1px solid black'})]),
+                    html.Tr([html.Td("Number of Hurricanes Since 1980:", style={'border': '1px solid black'}), html.Td(Num_hurricane, style={'border': '1px solid black'})])
+                ])
+            ], style={'border-collapse': 'collapse'}),
+        ], style={'margin-left': '10px'})
+    ], style={'display': 'flex'})
+  
+    return risk_metrics_display, premiums_chart, losses_chart, insured_value_chart
     
 if __name__ == '__main__':
     app.run_server(debug=True)

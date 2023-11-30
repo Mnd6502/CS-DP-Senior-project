@@ -73,7 +73,7 @@ def generate_hurricane_map(hurricane_data):
     m.save('Hurricane_map.html')
 
 # def main():
-#     exposures_data = pd.read_csv('Exposures.csv')
+#     exposures_data = pd.read_csv('./data/Exposures.csv')
 #     plotted_locations = generate_map(exposures_data)
 #     print(list(plotted_locations))
     

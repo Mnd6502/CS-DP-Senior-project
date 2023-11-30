@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from keras.preprocessing.sequence import TimeseriesGenerator
 from sklearn.model_selection import train_test_split
 from keras.models import Sequential
@@ -16,7 +16,7 @@ data = pd.read_csv('selected_hurricane_data.csv')
 hurricane_data = data[(data['Name (N/A)'] == 'IVAN') & (data['Season (Year)'] == 2004)].reset_index(drop=True)
 
 # Scale the features
-scaler = MinMaxScaler()
+scaler = StandardScaler()
 hurricane_data_scaled = scaler.fit_transform(hurricane_data[['Latitude (deg_north)', 'Longitude (deg_east)', 'Wind(WMO) (kt)']])
 
 # Define the sequence parameters
